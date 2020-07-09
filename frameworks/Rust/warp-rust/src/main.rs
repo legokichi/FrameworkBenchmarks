@@ -64,10 +64,17 @@ fn routes(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), tokio_postgres::Error> {
-    let database = Box::leak(Box::new(Database::connect().await?));
-    warp::serve(routes(database))
-        .run(([0, 0, 0, 0], 8080))
-        .await;
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let database= Box::leak(Box::new(Database::connect().await?));
+    let filter = routes(database);
+    let svc = warp::service(filter);
+    let make_svc = hyper::service::make_service_fn(|_|{
+        futures::future::ok::<_,  std::convert::Infallible>(svc.clone())
+    });
+    hyper::server::Server::bind(&([0, 0, 0, 0], 8080).into())
+        .http1_keepalive(true)
+        .tcp_keepalive(Some(std::time::Duration::from_secs(10)))
+        .serve(make_svc)
+        .await?;
     Ok(())
 }
