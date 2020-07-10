@@ -73,6 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     });
     hyper::server::Server::bind(&([0, 0, 0, 0], 8080).into())
         .http1_keepalive(true)
+        .http1_pipeline_flush(true)
         .tcp_keepalive(Some(std::time::Duration::from_secs(10)))
         .serve(make_svc)
         .await?;
